@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>スロット野獣伝説</title>
+<style>
+  body {
+    background: linear-gradient(135deg, #000000, #202020);
+    color: white;
+    font-family: "Arial Black", Gadget, sans-serif;
+    text-align: center;
+    padding: 20px;
+    user-select: none;
+    overflow-x: hidden;
+    overflow-y: hidden;
+  }
+  h1 {
+    color: #f5a623;
+    text-shadow: 0 0 8px #f5a623;
+    margin-bottom: 30px;
+  }
+  #slot-machine {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .reel {
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle at center, #111 60%, #000 100%);
+    border: 4px solid #f5a623;
+    border-radius: 15px;
+    box-shadow: 0 0 20px #f5a623 inset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .reel img {
+    max-width: 110px;
+    max-height: 110px;
+    pointer-events: none;
+  }
+  .buttons {
+    margin-bottom: 20px;
+  }
+  button {
+    background: #f5a623;
+    border: none;
+    padding: 12px 25px;
+    margin: 0 10px;
+    font-weight: bold;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: black;
+    transition: background 0.3s;
+    user-select: none;
+    box-shadow: 0 0 8px #f5a623;
+  }
+  button:hover:not(:disabled) {
+    background: #ffcc44;
+    box-shadow: 0 0 15px #ffcc44;
+  }
+  button:disabled {
+    background: #555;
+    cursor: default;
+    box-shadow: none;
+    color: #ccc;
+  }
+  #lever, #stopAll {
+    font-size: 18px;
+    width: 160px;
+    margin-top: 10px;
+    border-radius: 30px;
+    box-shadow: 0 0 20px #f5a623;
+  }
+  footer {
+    margin-top: 40px;
+    font-size: 14px;
+    color: #f5a623;
+    text-shadow: 0 0 6px #f5a623;
+  }
+</style>
+</head>
+<body>
+<h1>スロット野獣伝説</h1>
+<div id="slot-machine">
+  <div class="reel" id="reel1"><img src="img/yaju-7.jpg" alt="リール1"></div>
+  <div class="reel" id="reel2"><img src="img/yaju-7.jpg" alt="リール2"></div>
+  <div class="reel" id="reel3"><img src="img/yaju-7.jpg" alt="リール3"></div>
+</div>
+<div class="buttons">
+  <button id="stopAll" disabled>STOP</button>
+</div>
+<button id="lever">レバーを引く</button>
+
+<audio id="cherrySound" src="sound/yaju_otakebi.mp3"></audio>
+<audio id="lemonSound" src="sound/lemon.mp3"></audio>
+<audio id="starSound" src="sound/star.mp3"></audio>
+<audio id="bellSound" src="sound/bell.mp3"></audio>
+<audio id="barSound" src="sound/bar.mp3"></audio>
+<audio id="sevenSound" src="sound/bonus.mp3"></audio>
+<audio id="bgm" src="sound/bgm.mp3" loop></audio>
+
+<script>
+  window.onload = () => {
+    const symbols = [
+      { name: 'cherry', image: 'img/yaju-7.jpg', soundId: 'cherrySound' },
+      { name: 'lemon', image: 'img/lemon.jpg', soundId: 'lemonSound' },
+      { name: 'star', image: 'img/star.jpg', soundId: 'starSound' },
+      { name: 'bell', image: 'img/bell.jpg', soundId: 'bellSound' },
+      { name: 'bar', image: 'img/bar.jpg', soundId: 'barSound' },
+      { name: 'seven', image: 'img/bonus-icon.jpg', soundId: 'sevenSound' }
+    ];
+
+    let intervals = [null, null, null];
+    let results = [symbols[0], symbols[0], symbols[0]];
+    let stopped = [true, true, true];
+    let isLocked = false;
+    let lastSound = null;
+    let currentStopIndex = 0;
+
+    const bgm = document.getElementById('bgm');
+    const stopAllBtn = document.getElementById('stopAll');
+    const leverBtn = document.getElementById('lever');
+
+    function stopAllSounds() {
+      if (lastSound) {
+        lastSound.pause();
+        lastSound.currentTime = 0;
+        lastSound = null;
+      }
+    }
+
+    function getSpinResult() {
+      if (Math.random() < 0.9) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        return [symbol, symbol, symbol];
+      } else {
+        return Array.from({ length: 3 }, () => symbols[Math.floor(Math.random() * symbols.length)]);
+      }
+    }
+
+    function startSpin() {
+      if (isLocked) return;
+      isLocked = false;
+      currentStopIndex = 0;
+
+      for (let i = 0; i < 3; i++) {
+        stopped[i] = false;
+      }
+
+      stopAllBtn.disabled = false;
+      stopAllSounds();
+
+      if (bgm.paused) bgm.play();
+
+      results = getSpinResult();
+
+      for (let i = 0; i < 3; i++) {
+        intervals[i] = setInterval(() => {
+          const randSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+          document.getElementById(`reel${i + 1}`).innerHTML = `<img src="${randSymbol.image}" alt="${randSymbol.name}">`;
+        }, 80);
+      }
+    }
+
+    function stopNextReel() {
+      if (isLocked || currentStopIndex > 2) return;
+
+      clearInterval(intervals[currentStopIndex]);
+
+      const symbol = results[currentStopIndex];
+      document.getElementById(`reel${currentStopIndex + 1}`).innerHTML = `<img src="${symbol.image}" alt="${symbol.name}">`;
+
+      stopped[currentStopIndex] = true;
+      currentStopIndex++;
+
+      if (currentStopIndex > 2) {
+        stopAllBtn.disabled = true;
+        checkResult();
+      }
+    }
+
+    function checkResult() {
+      const [a, b, c] = results;
+      if (a.name === b.name && b.name === c.name) {
+        const sound = document.getElementById(a.soundId);
+        if (sound) {
+          stopAllSounds();
+          sound.play();
+          lastSound = sound;
+          bgm.pause();
+          isLocked = true;
+          const unlock = () => {
+            isLocked = false;
+            bgm.play();
+          };
+          sound.onended = () => {
+            clearTimeout(timeoutId);
+            unlock();
+          };
+          const timeoutId = setTimeout(() => {
+            sound.pause();
+            unlock();
+          }, 3000);
+        }
+      } else {
+        isLocked = false;
+      }
+    }
+
+    leverBtn.addEventListener('click', () => {
+      stopAllSounds();
+      isLocked = false;
+      if (bgm.paused) bgm.play();
+      if (!isLocked && stopped.every(v => v)) {
+        startSpin();
+      }
+    });
+
+    stopAllBtn.addEventListener('click', () => {
+      stopNextReel();
+    });
+
+    for (let i = 0; i < 3; i++) {
+      stopped[i] = true;
+      document.getElementById(`reel${i + 1}`).innerHTML = `<img src="${symbols[0].image}" alt="${symbols[0].name}">`;
+    }
+
+    stopAllBtn.disabled = true;
+    bgm.volume = 0.2;
+    bgm.play();
+  };
+</script>
+
+<!-- 製作者名のクレジット表示 -->
+<footer>
+  © 2025 coffee jerry Presents - スロット野獣伝説
+</footer>
+
+</body>
+</html>
